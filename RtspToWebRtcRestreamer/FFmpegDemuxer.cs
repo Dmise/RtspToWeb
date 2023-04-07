@@ -29,7 +29,7 @@ namespace RtspToWebRtcRestreamer
                 commandTemplate = "-re -i {0} -an -vcodec {1} -ssrc {2} -f rtp rtp://{3}:{4} -vn -acodec {5} -ssrc {6} -f rtp rtp://{3}:{7} -sdp_file {8}",
                 rtspUrl = "rtsp://admin:HelloWorld4@192.168.1.64:554/ISAPI/Streaming/Channels/101",
                 vcodec = "h264",
-                acodec = "copy",
+                acodec = "pcm_alaw",
                 audioPort = 5204,
                 videoPort = 5202,
                 audioSsrc = 50,
@@ -41,6 +41,12 @@ namespace RtspToWebRtcRestreamer
 
         public void Run()
         {
+            // delete old sdp file if exist
+            if (File.Exists(_dc.sdpPath))
+            {
+                File.Delete(_dc.sdpPath);
+            }
+            // configure and run ffmpeg process
             var args = String.Format(_dc.commandTemplate, 
                 _dc.rtspUrl,
                 _dc.vcodec,
@@ -53,8 +59,43 @@ namespace RtspToWebRtcRestreamer
                 _dc.sdpPath
                 );
             SetupAndRunProcess(ref _ffmpegProcess, args);
-        }
 
+            // Verification
+            // wait until sdp file created and satisfy condition
+            // in my case sdp file need have two track audio and video
+            // if we do not check desire condition it may lead to errors due to not fully writed sdp file
+            var ready = false;
+            while (!ready)
+            {
+                if(IsOk(_dc.sdpPath) == true)
+                {
+                    ready = true;
+                    break;
+                }
+                Task.Delay(77);           
+            }
+        }
+      
+        private bool IsOk(string sdpFilePath)
+        {
+            try
+            {
+                if (File.Exists(sdpFilePath))
+                {
+                    var sdp = SDP.ParseSDPDescription(File.ReadAllText(sdpFilePath));
+                    var videoAnn = sdp.Media.First(x => x.Media == SDPMediaTypesEnum.video);
+                    var audioAnn = sdp.Media.First(x => x.Media == SDPMediaTypesEnum.audio);
+                    if (videoAnn != null && audioAnn != null)
+                        return true;
+                    return false;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            catch(Exception ex) { return false; }
+        }
 
         void SetupAndRunProcess(ref Process proc, string arguments)
         {

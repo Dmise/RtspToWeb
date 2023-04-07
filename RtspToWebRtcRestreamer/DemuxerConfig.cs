@@ -10,7 +10,7 @@ namespace RtspToWebRtcRestreamer
     {
         // exe path
         public string SdpFolder { get; private set; } = "A:\\temp\\sdp";
-        public string SdpFileName { get; private set; } = "stream.sdp";
+        public string SdpFileName { get; private set; } = "exp4.sdp";
         public string FfmpegBinaryFolder { get; private set; } = "C:\\Program Files\\ffmpeg\\bin";
         
 

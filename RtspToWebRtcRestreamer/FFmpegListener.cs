@@ -23,6 +23,7 @@ namespace RtspToWebRtcRestreamer
         public MediaStreamTrack? audioTrack { get; private set; }
         public SDPAudioVideoMediaFormat videoFormatRTP { get; private set; }
         public SDPAudioVideoMediaFormat audioFormatRTP { get; private set; }
+        
 
         public event Action<IPEndPoint, SDPMediaTypesEnum, RTPPacket> OnAudioRtpPacketReceived;
         public event Action<IPEndPoint, SDPMediaTypesEnum, RTPPacket> OnVideoRtpPacketReceived;
@@ -34,13 +35,16 @@ namespace RtspToWebRtcRestreamer
 
         public async void Run(CancellationToken token)
         {
-            // read sdp file
-            var sdpVideo = SDP.ParseSDPDescription(File.ReadAllText(_dc.sdpPath));
+            // create sdpVideo
+            var sdpVideo = SDP.ParseSDPDescription(File.ReadAllText(_dc.sdpPath));            
+            var videoAnn = sdpVideo.Media.Find(x => x.Media == SDPMediaTypesEnum.video);
             var audioAnn = sdpVideo.Media.Find(x => x.Media == SDPMediaTypesEnum.audio);
             sdpVideo.Media.Remove(audioAnn);
+            // cretae sdpAudio
+            var sdpAudio = SDP.ParseSDPDescription(File.ReadAllText(_dc.sdpPath));
+            sdpAudio.Media.Remove(videoAnn);
 
             // configure video listener
-            var videoAnn = sdpVideo.Media.Find(x => x.Media == SDPMediaTypesEnum.video);
             videoFormatRTP = videoAnn.MediaFormats.Values.First();
             videoTrack = new MediaStreamTrack(
                                         SDPMediaTypesEnum.video,
@@ -54,8 +58,7 @@ namespace RtspToWebRtcRestreamer
             _videoRTP.addTrack(videoTrack);
 
             // configure audio listener
-            var sdpAudio = SDP.ParseSDPDescription(File.ReadAllText(_dc.sdpPath));
-            sdpAudio.Media.Remove(videoAnn);
+            
             
             audioFormatRTP = audioAnn.MediaFormats.Values.First();
             audioTrack = new MediaStreamTrack(
@@ -89,7 +92,7 @@ namespace RtspToWebRtcRestreamer
         }
         private void HndlAudioPacketReceived(IPEndPoint arg1, SDPMediaTypesEnum arg2, RTPPacket arg3)
         {
-            if (OnVideoRtpPacketReceived == null) return;
+            if (OnAudioRtpPacketReceived == null) return;
             OnAudioRtpPacketReceived.Invoke(arg1, arg2, arg3);
         }
     }
