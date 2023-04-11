@@ -21,23 +21,11 @@ namespace RtspToWebRtcRestreamer
         {
             return _dc;
         }
-        public FFmpegDemuxer()
+                    
+        public FFmpegDemuxer(DemuxerConfig config)
         {
-            
-            _dc = new DemuxerConfig
-            {
-                commandTemplate = "-re -i {0} -an -vcodec {1} -ssrc {2} -f rtp rtp://{3}:{4} -vn -acodec {5} -ssrc {6} -f rtp rtp://{3}:{7} -sdp_file {8}",
-                rtspUrl = "rtsp://admin:HelloWorld4@192.168.1.64:554/ISAPI/Streaming/Channels/101",
-                vcodec = "h264",
-                acodec = "pcm_alaw",
-                audioPort = 5204,
-                videoPort = 5202,
-                audioSsrc = 50,
-                videoSsrc = 60,
-                serverIP = IPAddress.Loopback.MapToIPv4().ToString(),
-            };
-            
-    }
+            _dc = config;
+        }
 
         public void Run()
         {
@@ -47,18 +35,8 @@ namespace RtspToWebRtcRestreamer
                 File.Delete(_dc.sdpPath);
             }
             // configure and run ffmpeg process
-            var args = String.Format(_dc.commandTemplate, 
-                _dc.rtspUrl,
-                _dc.vcodec,
-                _dc.videoSsrc,
-                _dc.serverIP,
-                _dc.videoPort,
-                _dc.acodec,
-                _dc.audioSsrc,
-                _dc.audioPort,
-                _dc.sdpPath
-                );
-            SetupAndRunProcess(ref _ffmpegProcess, args);
+            
+            SetupAndRunProcess(ref _ffmpegProcess, _dc.Args);
 
             // Verification
             // wait until sdp file created and satisfy condition
@@ -83,17 +61,38 @@ namespace RtspToWebRtcRestreamer
                 if (File.Exists(sdpFilePath))
                 {
                     var sdp = SDP.ParseSDPDescription(File.ReadAllText(sdpFilePath));
-                    var videoAnn = sdp.Media.First(x => x.Media == SDPMediaTypesEnum.video);
-                    var audioAnn = sdp.Media.First(x => x.Media == SDPMediaTypesEnum.audio);
-                    if (videoAnn != null && audioAnn != null)
-                        return true;
-                    return false;
+                    switch (_dc.outputStream)
+                    {
+                        case StreamsEnum.videoAndAudio:
+                        {
+                            var videoAnn = sdp.Media.First(x => x.Media == SDPMediaTypesEnum.video);
+                            var audioAnn = sdp.Media.First(x => x.Media == SDPMediaTypesEnum.audio);
+                            if (videoAnn != null && audioAnn != null)
+                                return true;
+                            return false;
+                        }
+                        case StreamsEnum.video:
+                        {
+                            var videoAnn = sdp.Media.First(x => x.Media == SDPMediaTypesEnum.video);
+                            if (videoAnn != null)
+                                return true;
+                            return false;
+                        }
+                        case StreamsEnum.audio:
+                        {
+                            var audioAnn = sdp.Media.First(x => x.Media == SDPMediaTypesEnum.audio);
+                            if (audioAnn != null)
+                                return true;
+                            return false;
+                        }
+                        default:
+                            return false;
+                    }
                 }
                 else
-                {
                     return false;
-                }
             }
+            
             catch(Exception ex) { return false; }
         }
 

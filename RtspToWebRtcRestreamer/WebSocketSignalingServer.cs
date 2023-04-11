@@ -73,24 +73,30 @@ namespace RtspToWebRtcRestreamer
         private RTCPeerConnection Createpc(WebSocketContext context)
         {
             var pc = new RTCPeerConnection(null);
-          
-            //add videoTrack            
-            MediaStreamTrack videoTrack = new MediaStreamTrack(
-                                        SDPMediaTypesEnum.video,
-                                        false,
-                                        new List<SDPAudioVideoMediaFormat> { _ffmpegListener.videoFormatRTP },
-                                        MediaStreamStatusEnum.SendOnly);
-            videoTrack.Ssrc = _ffmpegListener.videoTrack.Ssrc;
-            pc.addTrack(videoTrack);
 
-            //add audio Track            
-            MediaStreamTrack audioTrack = new MediaStreamTrack(
-                                        SDPMediaTypesEnum.audio,
-                                        false,
-                                        new List<SDPAudioVideoMediaFormat> { _ffmpegListener.audioFormatRTP },
-                                        MediaStreamStatusEnum.SendOnly);
-            audioTrack.Ssrc = _ffmpegListener.audioTrack.Ssrc;
-            pc.addTrack(audioTrack);
+            //add videoTrack
+            if (_ffmpegListener.videoTrack != null)
+            {
+                MediaStreamTrack videoTrack = new MediaStreamTrack(
+                                            SDPMediaTypesEnum.video,
+                                            false,
+                                            new List<SDPAudioVideoMediaFormat> { _ffmpegListener.videoFormatRTP },
+                                            MediaStreamStatusEnum.SendOnly);
+                videoTrack.Ssrc = _ffmpegListener.videoTrack.Ssrc;
+                pc.addTrack(videoTrack);
+            }
+
+            //add audio Track
+            if (_ffmpegListener.audioTrack != null)
+            {
+                MediaStreamTrack audioTrack = new MediaStreamTrack(
+                                            SDPMediaTypesEnum.audio,
+                                            false,
+                                            new List<SDPAudioVideoMediaFormat> { _ffmpegListener.audioFormatRTP },
+                                            MediaStreamStatusEnum.SendOnly);
+                audioTrack.Ssrc = _ffmpegListener.audioTrack.Ssrc;
+                pc.addTrack(audioTrack);
+            }
             
             pc.onicecandidate += (candidate) =>
             {
